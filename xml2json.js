@@ -1,44 +1,92 @@
-const fs = require('fs');
-const XML = require('./xml2.js');
+#include "C:\\Users\\n.kohir\\Documents\\xml2.js"; // Include the xml2.js library  
+#include "C:\\Users\\n.kohir\\Documents\\utility.js"; // Include the utility.js library   
 
-// Read the .odx-f file
-fs.readFile('odxf.odx-f', 'utf8', (err, data) => {
-    if (err) {
-        console.error('Error reading .odx-f file:', err);
-        return;
+// Read the XML file
+var xmlPath = "C:\\Users\\n.kohir\\Documents\\prova.odx-f";
+var f = new File(xmlPath);
+if (!f.open('r')) {                         
+    print('Error opening file:', xmlPath);             
+    return;
+} 
+var data = f.read();
+f.close();
+
+// Parse the XML using xml2.js
+var xmlDoc = XML.parse(data);
+
+// Find the <EXPECTED-IDENTS> section
+var expectedIdents = XML.search(xmlDoc, '/ODX/FLASH/ECU-MEMS/ECU-MEM/MEM/SESSIONS/SESSION/EXPECTED-IDENTS');
+if (!expectedIdents) {
+    print('<EXPECTED-IDENTS> section not found');
+    return;
+}
+
+// Extract ID names and values
+var dataObj = {};
+for (var i = 0; i < expectedIdents.length; i++) {
+    var ident = XML.search(expectedIdents, 'EXPECTED-IDENT[' + i + ']');
+    //print('Ident:', ident); // Debug print to see the entire ident object
+    var identName = XML.data(XML.search(ident, 'SHORT-NAME'), '');
+    //print('Ident Name:', identName); // Debug print
+    var values = new Array();
+    var valueElements = XML.search(ident, 'IDENT-VALUES');
+
+    for (var j = 0; j < valueElements.length; j++) {
+        var valueElement = XML.search(valueElements, 'IDENT-VALUE[' + j + ']');
+        //print('Value Element:', valueElement); // Debug print to see the value element
+        values.push(XML.data(valueElement, ''));
     }
+    dataObj[identName] = values;
+}
 
-    // Parse the XML using xml2.js
-    const xmlDoc = XML.parse(data);
-
-    // Find the <EXPECTED-IDENTS> section
-    const expectedIdents = XML.search(xmlDoc, 'EXPECTED-IDENTS');
-    if (!expectedIdents) {
-        console.error('<EXPECTED-IDENTS> section not found');
-        return;
+if(ft == 2){
+    hwKey = "Supplier_ECU_Hardware_Part_Number";
+    swKey = "Supplier_ECU_Software_Part_Number";
+}
+else if(ft < 2){
+    swKey = 'Vehicle_Manufacturer_ECUSoftware_Number';
+    hwKey = 'Vehicle_Manufacturer_ECUHardware_Number';
+}        
+else if(ft > 0 && ft < 10){
+    var hwKey = 'Vehicle_Manufacturer_ECU_Hardware_Number';
+    var swKey = 'Vehicle_Manufacturer_ECU_Software_Number'; 
+}
+   
+//print('Vehicle_Manufacturer_ECU_Hardware_Number:');
+var hwValid = false;
+var swValid = false;
+for (var k = 0; k < dataObj[hwKey].length; k++) {
+    print(dataObj[hwKey][k]);
+    if(hwn == dataObj[hwKey][k]){
+        display('Hardware Matched');
+        hwValid = true;
+        return 0;
     }
+}
+if(!hwValid){
+    display('Incompatible Hardware');
+    return 0;
+} 
 
-    // Extract ID names and values
-    const dataObj = {};
-    const idents = XML.child(expectedIdents, 'IDENT');
-    for (let i = 0; i < idents.length; i++) {
-        const ident = idents[i];
-        const identName = XML.data(ident, 'ID');
-        const values = [];
-        const valueElements = XML.child(ident, 'VALUE');
-        for (let j = 0; j < valueElements.length; j++) {
-            values.push(XML.data(valueElements[j], ''));
-        }
-        dataObj[identName] = values;
+for (var k = 0; k < dataObj[swKey].length; k++) {
+    print(dataObj[swKey][k]);
+    if(swn == dataObj[swKey][k]){
+        i, e = Diag4.doJob("download\n" + idx, 3600, true); // execute the real reflashing process
+        if (i) { // display("Reflash #1\r\n" + String.gsub(i, "\n", "\r\n"))
+            log("\t" + String.gsub(i, "\n", "\r\n\t"));
+            if (String.strfind(i, "DownLoad Completed") != nil || String.strfind(i, "Test Completed") != nil) {
+                display(ecu + " reflash: OK");
+                return 2;
+            } // end if (String.strfind(i, "DownLoad Completed") != nil || String.strfind(i, "Test Completed") != nil)
+        } else {
+            display("Reflash failed: " + e);
+            return -1;
+        } // end if (i)
+    } else {
+        display("  Incompatible Software");
     }
+}
 
-    // Convert to JSON and save to a file
-    const json = JSON.stringify(dataObj, null, 4);
-    fs.writeFile('expected_idents.json', json, 'utf8', err => {
-        if (err) {
-            console.error('Error writing JSON file:', err);
-            return;
-        }
-        console.log('Data has been exported to expected_idents.json');
-    });
-});
+
+
+
