@@ -39,52 +39,97 @@ for (var i = 0; i < expectedIdents.length; i++) {
     dataObj[identName] = values;
 }
 
-if(ft == 2){
-    hwKey = "Supplier_ECU_Hardware_Part_Number";
-    swKey = "Supplier_ECU_Software_Part_Number";
+var keys = {
+    hwKey: null,
+    swKey: null,
+    appNumKey: null,
+    calNumKey: null,
+    bootKey: null,
+    appInfoKey: null,
+    appDataKey: null,
+    dataLibKey: null,
+    appsKey: null
+};
+
+if (ft == 2) {
+    keys.hwKey = "Supplier_ECU_Hardware_Part_Number";
+    keys.swKey = "Supplier_ECU_Software_Part_Number";
+} else if (ft < 2) {
+    keys.swKey = 'Vehicle_Manufacturer_ECUSoftware_Number';
+    keys.hwKey = 'Vehicle_Manufacturer_ECUHardware_Number';
+} else if (ft > 0 && ft < 10) {
+    keys.hwKey = 'Vehicle_Manufacturer_ECU_Hardware_Number';
+    keys.swKey = 'Vehicle_Manufacturer_ECU_Software_Number';
+    keys.appNumKey = 'Vehicle_Manufacturer_ECU_Software_Application_Number';
+    keys.calNumKey = 'Vehicle_Manufacturer_ECU_Software_Calibration_Number';
+} else if (ft >= 10 && ft <= 13) {
+    keys.hwKey = 'Vehicle_Manufacturer_ECU_Hardware_Number';
+    keys.bootKey = 'Boot_Software_Version_Information';
+    keys.appInfoKey = 'Application_Software_Information';
+    keys.appDataKey = 'Application_Data_Information';
+    keys.dataLibKey = 'Data_Library_Information';
+    keys.appsKey = 'APPs_Information';
 }
-else if(ft < 2){
-    swKey = 'Vehicle_Manufacturer_ECUSoftware_Number';
-    hwKey = 'Vehicle_Manufacturer_ECUHardware_Number';
-}        
-else if(ft > 0 && ft < 10){
-    var hwKey = 'Vehicle_Manufacturer_ECU_Hardware_Number';
-    var swKey = 'Vehicle_Manufacturer_ECU_Software_Number'; 
+
+function validateKey(key, value) {
+    if (!dataObj[key]) return false;
+    return dataObj[key].includes(value);
 }
-   
-//print('Vehicle_Manufacturer_ECU_Hardware_Number:');
-var hwValid = false;
-var swValid = false;
-for (var k = 0; k < dataObj[hwKey].length; k++) {
-    print(dataObj[hwKey][k]);
-    if(hwn == dataObj[hwKey][k]){
-        display('Hardware Matched');
-        hwValid = true;
+
+if (!validateKey(keys.hwKey, hwn)) {
+    display('Incompatible Hardware');
+    return 0;
+}
+
+if (!validateKey(keys.swKey, swn)) {
+    display('Incompatible Software');
+    return 0;
+}
+
+if (ft > 0 && ft < 10) {
+    if (!validateKey(keys.appNumKey, appNum)) {
+        display('Incompatible Application Number');
+        return 0;
+    }
+    if (!validateKey(keys.calNumKey, calNum)) {
+        display('Incompatible Calibration Number');
         return 0;
     }
 }
-if(!hwValid){
-    display('Incompatible Hardware');
-    return 0;
-} 
 
-for (var k = 0; k < dataObj[swKey].length; k++) {
-    print(dataObj[swKey][k]);
-    if(swn == dataObj[swKey][k]){
-        i, e = Diag4.doJob("download\n" + idx, 3600, true); // execute the real reflashing process
-        if (i) { // display("Reflash #1\r\n" + String.gsub(i, "\n", "\r\n"))
-            log("\t" + String.gsub(i, "\n", "\r\n\t"));
-            if (String.strfind(i, "DownLoad Completed") != nil || String.strfind(i, "Test Completed") != nil) {
-                display(ecu + " reflash: OK");
-                return 2;
-            } // end if (String.strfind(i, "DownLoad Completed") != nil || String.strfind(i, "Test Completed") != nil)
-        } else {
-            display("Reflash failed: " + e);
-            return -1;
-        } // end if (i)
-    } else {
-        display("  Incompatible Software");
+if (ft >= 10 && ft <= 13) {
+    if (!validateKey(keys.bootKey, bootVersion)) {
+        display('Incompatible Boot Software Version');
+        return 0;
     }
+    if (!validateKey(keys.appInfoKey, appInfo)) {
+        display('Incompatible Application Software Information');
+        return 0;
+    }
+    if (!validateKey(keys.appDataKey, appData)) {
+        display('Incompatible Application Data Information');
+        return 0;
+    }
+    if (!validateKey(keys.dataLibKey, dataLib)) {
+        display('Incompatible Data Library Information');
+        return 0;
+    }
+    if (!validateKey(keys.appsKey, apps)) {
+        display('Incompatible APPs Information');
+        return 0;
+    }
+}
+
+i, e = Diag4.doJob("download\n" + idx, 3600, true); // execute the real reflashing process
+if (i) {
+    log("\t" + String.gsub(i, "\n", "\r\n\t"));
+    if (String.strfind(i, "DownLoad Completed") != nil || String.strfind(i, "Test Completed") != nil) {
+        display(ecu + " reflash: OK");
+        return 2;
+    }
+} else {
+    display("Reflash failed: " + e);
+    return -1;
 }
 
 
